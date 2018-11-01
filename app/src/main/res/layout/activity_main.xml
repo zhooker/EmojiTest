@@ -8,15 +8,6 @@
 
     <TextView
         android:id="@+id/tv_text_1"
-        android:layout_width="200dp"
-        android:layout_height="wrap_content"
-        android:background="#80CCCCCC"
-        android:ellipsize="end"
-        android:maxLines="2" />
-
-
-    <TextView
-        android:id="@+id/tv_text_2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#80CCCC00" />
@@ -25,7 +16,14 @@
         android:id="@+id/ev_text_input"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="50dp"
+        android:layout_marginTop="0dp"
         android:maxLength="5" />
 
+
+    <TextView
+        android:id="@+id/tv_text_2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="0dp"
+        android:background="#CCCCCC" />
 </LinearLayout>

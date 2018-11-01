@@ -10,12 +10,11 @@ import android.text.TextWatcher
 import android.util.Log
 import com.example.topic.filter.CharFilter3
 import com.example.topic.filter.EmojiHelper
-import com.example.topic.topic.TopicTextUtils
 import kotlinx.android.synthetic.main.activity_main.*
 
 const val TAG = "zsj"
-const val TIMEOUT = 300L
-const val MAX_COUNT = 10
+const val TIMEOUT = 0L
+const val MAX_COUNT = 20
 
 class MainActivity : AppCompatActivity() {
 
@@ -23,28 +22,47 @@ class MainActivity : AppCompatActivity() {
         override fun handleMessage(msg: Message) {
             when (msg.what) {
                 1 -> {
-                    var start = System.currentTimeMillis()
-                    val str1 = TopicTextUtils.getTopicSpannable(msg.obj.toString())
-                    Log.d(TAG, "time1 = ${System.currentTimeMillis() - start}")
+//                    var start = System.currentTimeMillis()
+//                    val str1 = TopicTextUtils.getTopicSpannable(msg.obj.toString())
+//                    Log.d(TAG, "time1 = ${System.currentTimeMillis() - start}")
+//
+//                    start = System.currentTimeMillis()
+//                    val str2 = TopicTextUtils.getTopicSpannable2(msg.obj.toString())
+//                    Log.d(TAG, "time2 = ${System.currentTimeMillis() - start}")
+//
+//                    start = System.currentTimeMillis()
+//                    val str3 = TopicTextUtils.getTopicSpannable3(msg.obj.toString())
+//                    Log.d(TAG, "time3 = ${System.currentTimeMillis() - start}")
 
-                    start = System.currentTimeMillis()
-                    val str2 = TopicTextUtils.getTopicSpannable2(msg.obj.toString())
-                    Log.d(TAG, "time2 = ${System.currentTimeMillis() - start}")
 
-                    start = System.currentTimeMillis()
-                    val str3 = TopicTextUtils.getTopicSpannable3(msg.obj.toString())
-                    Log.d(TAG, "time3 = ${System.currentTimeMillis() - start}")
+                    val charSequence = msg.obj as CharSequence
+                    val stringBuilder = StringBuilder()
+                    var count = 0
+                    var i = 0
+                    while (i < charSequence.length) {
+                        val num = EmojiHelper.getOffsetForBackspaceKey(charSequence, i)
+                        val subSequence = charSequence.subSequence(i, i + num)
 
-                    tv_text_1.setText(msg.obj.toString())
-                }
+                        stringBuilder.append(subSequence)
+                        stringBuilder.append("=")
+                        for (c in subSequence.toString().toCharArray()) {
+                            stringBuilder.append("0x" + Integer.toHexString(c.toInt()).toUpperCase() + " ")
+                        }
 
-                2 -> {
-                    val count = msg.obj.toString().toInt()
-                    if (count < 0) {
-                        tv_text_2.setText(String.format("字数达到%d个", MAX_COUNT))
-                    } else {
-                        tv_text_2.setText(String.format("字数%d个", count))
+                        stringBuilder.append("\n")
+
+                        count++
+                        i += num
                     }
+
+
+                    if (count >= MAX_COUNT) {
+                        tv_text_1.setText(String.format("字数达到上限%d个", MAX_COUNT))
+                    } else {
+                        tv_text_1.setText(String.format("字数%d个", count))
+                    }
+
+                    tv_text_2.setText(stringBuilder.toString())
                 }
             }
         }
@@ -55,17 +73,14 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-
         initEditText();
     }
 
 
     private fun initEditText() {
-        ev_text_input.filters = arrayOf<InputFilter>(CharFilter3(MainActivity@this, MAX_COUNT, object : CharFilter3.TextFilterListener {
+        ev_text_input.filters = arrayOf<InputFilter>(CharFilter3(MainActivity@ this, MAX_COUNT, object : CharFilter3.TextFilterListener {
             override fun onTextLengthOutOfLimit() {
                 Log.d(TAG, "***onTextLengthOutOfLimit***")
-                mHandler.removeMessages(2)
-                mHandler.sendMessageDelayed(mHandler.obtainMessage(2, -1), TIMEOUT);
             }
         }).ignoreExtraSpace(true))
 
@@ -77,10 +92,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 mHandler.removeMessages(1)
-                mHandler.sendMessageDelayed(mHandler.obtainMessage(1, s), TIMEOUT);
-
-                mHandler.removeMessages(2)
-                mHandler.sendMessageDelayed(mHandler.obtainMessage(2, EmojiHelper.getCharSequenceCount(ev_text_input.editableText)), TIMEOUT);
+                mHandler.sendMessageDelayed(mHandler.obtainMessage(1, ev_text_input.editableText), TIMEOUT)
             }
 
             override fun afterTextChanged(s: Editable) {
@@ -93,7 +105,7 @@ class MainActivity : AppCompatActivity() {
 //            ev_text_input.setText(text)
 //        }
 
-        mHandler.removeMessages(2)
-        mHandler.sendMessageDelayed(mHandler.obtainMessage(2, EmojiHelper.getCharSequenceCount(ev_text_input.editableText)), TIMEOUT);
+        mHandler.removeMessages(1)
+        mHandler.sendMessageDelayed(mHandler.obtainMessage(1, ""), TIMEOUT)
     }
 }

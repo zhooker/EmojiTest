@@ -13,6 +13,45 @@ public class EmojiHelper {
     private static final int CARRIAGE_RETURN = 0x0D;
 
 
+    // Initial state
+    static final int STATE_START = 0;
+
+    // The offset is immediately before line feed.
+    static final int STATE_LF = 1;
+
+    // The offset is immediately before a KEYCAP.
+    static final int STATE_BEFORE_KEYCAP = 2;
+    // The offset is immediately before a variation selector and a KEYCAP.
+    static final int STATE_BEFORE_VS_AND_KEYCAP = 3;
+
+    // The offset is immediately before an emoji modifier.
+    static final int STATE_BEFORE_EMOJI_MODIFIER = 4;
+    // The offset is immediately before a variation selector and an emoji modifier.
+    static final int STATE_BEFORE_VS_AND_EMOJI_MODIFIER = 5;
+
+    // The offset is immediately before a variation selector.
+    static final int STATE_BEFORE_VS = 6;
+
+    // The offset is immediately before an emoji.
+    static final int STATE_BEFORE_EMOJI = 7;
+    // The offset is immediately before a ZWJ that were seen before a ZWJ emoji.
+    static final int STATE_BEFORE_ZWJ = 8;
+    // The offset is immediately before a variation selector and a ZWJ that were seen before a
+    // ZWJ emoji.
+    static final int STATE_BEFORE_VS_AND_ZWJ = 9;
+
+    // The number of following RIS code points is odd.
+    static final int STATE_ODD_NUMBERED_RIS = 10;
+    // The number of following RIS code points is even.
+    static final int STATE_EVEN_NUMBERED_RIS = 11;
+
+    // The offset is in emoji tag sequence.
+    static final int STATE_IN_TAG_SEQUENCE = 12;
+
+    // The state machine has been stopped.
+    static final int STATE_FINISHED = 13;
+
+
     public static int getCharSequenceCount(CharSequence text) {
         int i = 0, count = 0;
         while (i < text.length()) {
@@ -23,51 +62,8 @@ public class EmojiHelper {
         return count;
     }
 
-
     // Returns the start offset to be deleted by a backspace key from the given offset.
     public static int getOffsetForBackspaceKey(CharSequence text, int offset) {
-//        if (offset <= 1) {
-//            return 0;
-//        }
-
-        // Initial state
-        final int STATE_START = 0;
-
-        // The offset is immediately before line feed.
-        final int STATE_LF = 1;
-
-        // The offset is immediately before a KEYCAP.
-        final int STATE_BEFORE_KEYCAP = 2;
-        // The offset is immediately before a variation selector and a KEYCAP.
-        final int STATE_BEFORE_VS_AND_KEYCAP = 3;
-
-        // The offset is immediately before an emoji modifier.
-        final int STATE_BEFORE_EMOJI_MODIFIER = 4;
-        // The offset is immediately before a variation selector and an emoji modifier.
-        final int STATE_BEFORE_VS_AND_EMOJI_MODIFIER = 5;
-
-        // The offset is immediately before a variation selector.
-        final int STATE_BEFORE_VS = 6;
-
-        // The offset is immediately before an emoji.
-        final int STATE_BEFORE_EMOJI = 7;
-        // The offset is immediately before a ZWJ that were seen before a ZWJ emoji.
-        final int STATE_BEFORE_ZWJ = 8;
-        // The offset is immediately before a variation selector and a ZWJ that were seen before a
-        // ZWJ emoji.
-        final int STATE_BEFORE_VS_AND_ZWJ = 9;
-
-        // The number of following RIS code points is odd.
-        final int STATE_ODD_NUMBERED_RIS = 10;
-        // The number of following RIS code points is even.
-        final int STATE_EVEN_NUMBERED_RIS = 11;
-
-        // The offset is in emoji tag sequence.
-        final int STATE_IN_TAG_SEQUENCE = 12;
-
-        // The state machine has been stopped.
-        final int STATE_FINISHED = 13;
-
         int deleteCharCount = 0;  // Char count to be deleted by backspace.
         int lastSeenVSCharCount = 0;  // Char count of previous variation selector.
 
@@ -83,15 +79,15 @@ public class EmojiHelper {
                     deleteCharCount = Character.charCount(codePoint);
                     if (codePoint == LINE_FEED) {
                         state = STATE_LF;
-                    } else if (isVariationSelector(codePoint)) {
+                    } else if (isVariationSelector(codePoint)) { //
                         state = STATE_BEFORE_VS;
-                    } else if (Emoji.isRegionalIndicatorSymbol(codePoint)) {
+                    } else if (Emoji.isRegionalIndicatorSymbol(codePoint)) { //国旗
                         state = STATE_ODD_NUMBERED_RIS;
-                    } else if (Emoji.isEmojiModifier(codePoint)) {
+                    } else if (Emoji.isEmojiModifier(codePoint)) { //肤色
                         state = STATE_BEFORE_EMOJI_MODIFIER;
                     } else if (codePoint == Emoji.COMBINING_ENCLOSING_KEYCAP) {
                         state = STATE_BEFORE_KEYCAP;
-                    } else if (Emoji.isEmoji(codePoint)) {
+                    } else if (Emoji.isEmoji(codePoint)) { // 普通emoji，会检查ZWJ
                         state = STATE_BEFORE_EMOJI;
                     } else if (codePoint == Emoji.CANCEL_TAG) {
                         state = STATE_IN_TAG_SEQUENCE;
