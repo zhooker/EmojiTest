@@ -13,8 +13,8 @@ import com.example.topic.filter.EmojiHelper
 import kotlinx.android.synthetic.main.activity_main.*
 
 const val TAG = "zsj"
-const val TIMEOUT = 0L
-const val MAX_COUNT = 20
+const val TIMEOUT = 100L
+const val MAX_COUNT = 10
 
 class MainActivity : AppCompatActivity() {
 
@@ -72,8 +72,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        initEditText();
+        initEditText()
     }
 
 
@@ -100,10 +99,10 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-//        ev_text_input.post {
-//            val text = "\uD83D\uDC81\u200D\uD83D\uDC82\u200D\uD83D\uDC88\u200D\uD83D\uDC75\u200D\uD83D\uDC49"
-//            ev_text_input.setText(text)
-//        }
+        ev_text_input.post {
+            val text = "\uD83D\uDC81\u200D\uD83D\uDC82\u200D\uD83D\uDC88\u200D\uD83D\uDC75\u200D\uD83D\uDC49"
+            ev_text_input.setText(text)
+        }
 
         mHandler.removeMessages(1)
         mHandler.sendMessageDelayed(mHandler.obtainMessage(1, ""), TIMEOUT)
