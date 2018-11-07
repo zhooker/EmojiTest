@@ -4,6 +4,8 @@ import android.icu.lang.UCharacter;
 import android.icu.lang.UProperty;
 
 /**
+ * todo 从后往前篇历，如果用来计算长度会影响效率
+ *
  * @author zhuangsj
  * @created 2018/10/31
  */
@@ -77,17 +79,169 @@ public class EmojiHelper {
             switch (state) {
                 case STATE_START:
                     deleteCharCount = Character.charCount(codePoint);
+                    if (codePoint == LINE_FEED) { // 换行
+                        state = STATE_LF;
+                    } else if (isVariationSelector(codePoint)) { // 异体字选择器.为不同地区不同字形选择
+                        state = STATE_BEFORE_VS;
+                    } else if (Emoji.isRegionalIndicatorSymbol(codePoint)) { // 国旗按奇偶数来计算
+                        state = STATE_ODD_NUMBERED_RIS;
+                    } else if (Emoji.isEmojiModifier(codePoint)) { // 肤色
+                        state = STATE_BEFORE_EMOJI_MODIFIER;
+                    } else if (codePoint == Emoji.COMBINING_ENCLOSING_KEYCAP) { // 针对0~9 # 的字符，U+20E3 结尾
+                        state = STATE_BEFORE_KEYCAP;
+                    } else if (Emoji.isEmoji(codePoint)) { // 普通emoji，会检查ZWJ
+                        state = STATE_BEFORE_EMOJI;
+                    } else if (codePoint == Emoji.CANCEL_TAG) { // tag_base tag_spec 与 tag_term 拼接而成的 emoji 序列串
+                        state = STATE_IN_TAG_SEQUENCE;
+                    } else {
+                        state = STATE_FINISHED;
+                    }
+                    break;
+                case STATE_LF:
+                    if (codePoint == CARRIAGE_RETURN) {
+                        ++deleteCharCount;
+                    }
+                    state = STATE_FINISHED;
+                    break;
+                case STATE_ODD_NUMBERED_RIS:
+                    if (Emoji.isRegionalIndicatorSymbol(codePoint)) {
+                        deleteCharCount += 2; /* Char count of RIS */
+                        state = STATE_EVEN_NUMBERED_RIS;
+                    } else {
+                        state = STATE_FINISHED;
+                    }
+                    break;
+                case STATE_EVEN_NUMBERED_RIS:
+                    if (Emoji.isRegionalIndicatorSymbol(codePoint)) {
+                        deleteCharCount -= 2; /* Char count of RIS */
+                        state = STATE_ODD_NUMBERED_RIS;
+                    } else {
+                        state = STATE_FINISHED;
+                    }
+                    break;
+                case STATE_BEFORE_KEYCAP:
+                    if (isVariationSelector(codePoint)) {
+                        lastSeenVSCharCount = Character.charCount(codePoint);
+                        state = STATE_BEFORE_VS_AND_KEYCAP;
+                        break;
+                    }
+
+                    if (Emoji.isKeycapBase(codePoint)) {
+                        deleteCharCount += Character.charCount(codePoint);
+                    }
+                    state = STATE_FINISHED;
+                    break;
+                case STATE_BEFORE_VS_AND_KEYCAP:
+                    if (Emoji.isKeycapBase(codePoint)) {
+                        deleteCharCount += lastSeenVSCharCount + Character.charCount(codePoint);
+                    }
+                    state = STATE_FINISHED;
+                    break;
+                case STATE_BEFORE_EMOJI_MODIFIER:
+                    if (isVariationSelector(codePoint)) {
+                        lastSeenVSCharCount = Character.charCount(codePoint);
+                        state = STATE_BEFORE_VS_AND_EMOJI_MODIFIER;
+                        break;
+                    } else if (Emoji.isEmojiModifierBase(codePoint)) {
+                        deleteCharCount += Character.charCount(codePoint);
+                    }
+                    state = STATE_FINISHED;
+                    break;
+                case STATE_BEFORE_VS_AND_EMOJI_MODIFIER:
+                    if (Emoji.isEmojiModifierBase(codePoint)) {
+                        deleteCharCount += lastSeenVSCharCount + Character.charCount(codePoint);
+                    }
+                    state = STATE_FINISHED;
+                    break;
+                case STATE_BEFORE_VS:
+                    if (Emoji.isEmoji(codePoint)) {
+                        deleteCharCount += Character.charCount(codePoint);
+                        state = STATE_BEFORE_EMOJI;
+                        break;
+                    }
+
+                    if (!isVariationSelector(codePoint) &&
+                            UCharacter.getCombiningClass(codePoint) == 0) {
+                        deleteCharCount += Character.charCount(codePoint);
+                    }
+                    state = STATE_FINISHED;
+                    break;
+                case STATE_BEFORE_EMOJI:
+                    if (codePoint == Emoji.ZERO_WIDTH_JOINER) {
+                        state = STATE_BEFORE_ZWJ;
+                    } else {
+                        state = STATE_FINISHED;
+                    }
+                    break;
+                case STATE_BEFORE_ZWJ:
+                    if (Emoji.isEmoji(codePoint)) {
+                        deleteCharCount += Character.charCount(codePoint) + 1;  // +1 for ZWJ.
+                        state = Emoji.isEmojiModifier(codePoint) ?
+                                STATE_BEFORE_EMOJI_MODIFIER : STATE_BEFORE_EMOJI;
+                    } else if (isVariationSelector(codePoint)) {
+                        lastSeenVSCharCount = Character.charCount(codePoint);
+                        state = STATE_BEFORE_VS_AND_ZWJ;
+                    } else {
+                        state = STATE_FINISHED;
+                    }
+                    break;
+                case STATE_BEFORE_VS_AND_ZWJ:
+                    if (Emoji.isEmoji(codePoint)) {
+                        // +1 for ZWJ.
+                        deleteCharCount += lastSeenVSCharCount + 1 + Character.charCount(codePoint);
+                        lastSeenVSCharCount = 0;
+                        state = STATE_BEFORE_EMOJI;
+                    } else {
+                        state = STATE_FINISHED;
+                    }
+                    break;
+                case STATE_IN_TAG_SEQUENCE:
+                    if (Emoji.isTagSpecChar(codePoint)) {
+                        deleteCharCount += 2; /* Char count of emoji tag spec character. */
+                        // Keep the same state.
+                    } else if (Emoji.isEmoji(codePoint)) {
+                        deleteCharCount += Character.charCount(codePoint);
+                        state = STATE_FINISHED;
+                    } else {
+                        // Couldn't find tag_base character. Delete the last tag_term character.
+                        deleteCharCount = 2;  // for U+E007F
+                        state = STATE_FINISHED;
+                    }
+                    // TODO: Need handle emoji variation selectors. Issue 35224297
+                    break;
+                default:
+                    throw new IllegalArgumentException("state " + state + " is unknown");
+            }
+        } while (tmpOffset < text.length() && state != STATE_FINISHED);
+
+        return deleteCharCount;
+    }
+
+    public static int getOffsetForBackspaceKey2(CharSequence text, int offset) {
+        int deleteCharCount = 0;  // Char count to be deleted by backspace.
+        int lastSeenVSCharCount = 0;  // Char count of previous variation selector.
+
+        int state = STATE_START;
+
+        int tmpOffset = offset;
+        do {
+            final int codePoint = Character.codePointBefore(text, tmpOffset);
+            tmpOffset -= Character.charCount(codePoint);
+
+            switch (state) {
+                case STATE_START:
+                    deleteCharCount = Character.charCount(codePoint);
                     if (codePoint == LINE_FEED) {
                         state = STATE_LF;
-                    } else if (isVariationSelector(codePoint)) { //
+                    } else if (isVariationSelector(codePoint)) {
                         state = STATE_BEFORE_VS;
-                    } else if (Emoji.isRegionalIndicatorSymbol(codePoint)) { //国旗
+                    } else if (Emoji.isRegionalIndicatorSymbol(codePoint)) {
                         state = STATE_ODD_NUMBERED_RIS;
-                    } else if (Emoji.isEmojiModifier(codePoint)) { //肤色
+                    } else if (Emoji.isEmojiModifier(codePoint)) {
                         state = STATE_BEFORE_EMOJI_MODIFIER;
                     } else if (codePoint == Emoji.COMBINING_ENCLOSING_KEYCAP) {
                         state = STATE_BEFORE_KEYCAP;
-                    } else if (Emoji.isEmoji(codePoint)) { // 普通emoji，会检查ZWJ
+                    } else if (Emoji.isEmoji(codePoint)) {
                         state = STATE_BEFORE_EMOJI;
                     } else if (codePoint == Emoji.CANCEL_TAG) {
                         state = STATE_IN_TAG_SEQUENCE;
@@ -210,7 +364,7 @@ public class EmojiHelper {
                 default:
                     throw new IllegalArgumentException("state " + state + " is unknown");
             }
-        } while (tmpOffset < text.length() && state != STATE_FINISHED);
+        } while (tmpOffset > 0 && state != STATE_FINISHED);
 
         return deleteCharCount;
     }

@@ -38,10 +38,10 @@ class MainActivity : AppCompatActivity() {
                     val charSequence = msg.obj as CharSequence
                     val stringBuilder = StringBuilder()
                     var count = 0
-                    var i = 0
-                    while (i < charSequence.length) {
-                        val num = EmojiHelper.getOffsetForBackspaceKey(charSequence, i)
-                        val subSequence = charSequence.subSequence(i, i + num)
+                    var i = charSequence.length
+                    while (i  > 0) {
+                        val num = EmojiHelper.getOffsetForBackspaceKey2(charSequence, i)
+                        val subSequence = charSequence.subSequence(i - num, i)
 
                         stringBuilder.append(subSequence)
                         stringBuilder.append("=")
@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity() {
                         stringBuilder.append("\n")
 
                         count++
-                        i += num
+                        i -= num
                     }
 
 
@@ -99,10 +99,10 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        ev_text_input.post {
-            val text = "\uD83D\uDC81\u200D\uD83D\uDC82\u200D\uD83D\uDC88\u200D\uD83D\uDC75\u200D\uD83D\uDC49"
-            ev_text_input.setText(text)
-        }
+//        ev_text_input.post {
+//            val text = "\uD83D\uDC81\u200D\uD83D\uDC82\u200D\uD83D\uDC88\u200D\uD83D\uDC75\u200D\uD83D\uDC49"
+//            ev_text_input.setText(text)
+//        }
 
         mHandler.removeMessages(1)
         mHandler.sendMessageDelayed(mHandler.obtainMessage(1, ""), TIMEOUT)
